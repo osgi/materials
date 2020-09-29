@@ -1,0 +1,8 @@
+grant codebase "file:../jar/osgi-framework.jar" {  	  
+	permission java.security.AllPermission;
+};
+
+grant {
+	permission java.util.PropertyPermission "mbs.lookup.*", "read";
+	permission java.util.PropertyPermission "com.sun.jini.reggie.*", "read";
+};

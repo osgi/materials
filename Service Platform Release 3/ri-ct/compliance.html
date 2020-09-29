@@ -1,0 +1,678 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+	<head>
+		<title>OSGi Compliance Program, Release 3</title>
+		<link rel=stylesheet href="/osgi/osgi.css" type="text/css">
+	</head>
+	<body>
+		<div class="body"><script language="javascript" src="/osgi/osgi.js" TYPE="text/javascript">	</script>
+			<script language="javascript" TYPE="text/javascript">
+			start()
+			</script>
+			<table width="600px" summary="Select topic">
+				<tr><td width="200px"><h2>Starting</h2>
+						<a href="#ee" class="pointer">Execution Environment</a><br>
+						<a href="#exceptions" class="pointer">Exceptions</a><br>
+						<a href="#starting" class="pointer">Starting</a><br>
+					</td>
+					<td width="200px"><h2>Howto</h2>
+						<a href="#manually" class="pointer">Running manually</a><br>
+						<a href="#director" class="pointer">Test tool</a><br>
+						<a href="#cmdline" class="pointer">From the command line</a><br>
+						<a href="#script" class="pointer">The Script language</a><br>
+					</td>
+					<td width="200px"><h2>Links</h2>
+						<a href="http://www.jcp.org/en/jsr/detail?id=197" class="pointer">JSR 197</a><br>
+						<a href="/docs/testing" class="pointer">OSGi Testing</a><br>
+					</td>
+				</tr>
+			</table>
+			
+			<h1><a name="compliance">Compliance Program</h1>
+				<p>The OSGi compliance program is a lightweight compliance program
+				as defined in <a href="/rfcs/rfc0052">RFC 0052</a>. The test suites for the
+				compliance program and the test harness are available from this page. OSGi
+				members in good standing may use these tools to verify that 
+				an OSGi Framework and set of services complies to the specifications.
+				<p>Running the test is not difficult. In principal,
+				it is running the test script on your own framework. As an example of how
+				to set this up, a zipped test environment using the reference implementation
+				is zipped up and can be <a href="test-framework.zip">downloaded</a>.
+				<h3><a name="ee"/>The Execution Environment</h3>
+				<p>It is advised to run both the director as well as the target
+				framework on J2SE. For the director, it is a requirement that 
+				the Java Crypto Engine (JCE) is available (this is available standard in
+				Java 1.4). Most tests are possible to run on smaller execution
+				environments but <b>not all</b>. It is therefore
+				assumed that the compliance tests are running on a J2SE environment. The following
+				are the test cases that <em>must</em> run J2SE because they use classes
+				not in the minimum execution environment. All other test cases can run on
+				the VMs that fullfil minimum execution requirements. Note that several of the reference 
+				implementations also require more than the minimum execution requirements demands). 
+				<a name="exceptions"/>
+				<table>
+					<tr>
+						<th>Test Case</th>
+						<th>Exception reason</th>
+					</tr>
+					<tr>
+						<td>io</td>
+						<td>Depends on javax.microedition.io () which
+							is not in the minimum execution requirements, but may now optionally be added with <a href="http://www.jcp.org/en/jsr/detail?id=197">JSR 197</a>
+						</td>
+					</tr>
+					<tr>
+						<td>jini</td>
+						<td>Depends on RMI which is not in the minimum execution requirements.</td>
+					</tr>
+				</table>
+				<h2>When does it pass?</h2>
+				<p>The OSGi specifications define that a vendor passes when the framework
+				passes all the framework tests and any optional services. This implies that
+				a vendor can be compliant, even if not all R3 services are implemented! The
+				pathological case is a vendor that <b>only</b> implements a Framework. However,
+				if a service is implemented, it must pass all associated tests.</p>
+				<h2>What should be submitted</h2>
+				<p>The output of the test is an <b>XML</b> file. This XML should be 
+				mailed to the <a href="mailto:cert-submit@osgi.org">certification authority</a>.				
+				<h2>How to get started</h2>
+				<a name="starting"></a>Two frameworks are needed to run the test suite. The first framework
+				is the director framework. This framework should be a stable framework
+				running a log service and an HTTP service. This framework is
+				not under test so its version is not relevant for the test. It will have to run the
+				<a href="bundles/osgi-director.jar">director bundle</a>. The
+				release (for example docs/compliance) directory will contain this bundle in its bundles directory.<br>
+				Previously, the director and the target frameworks could run together. Due to permissions testing,
+				this is no longer possible. The director <b>must</b> run on another framework as the
+				target.<br>
+				The bundle includes a user interface that is started when the bundle gets
+				started. It is possible to run the director without UI using a command line
+				interface or scripts. See <a href="/docs/testing/index.html#director">director options</a> for more
+				information about this. The director can run in a secure framework
+				but it needs many permissions (and so do the test suites).<br>
+				Once the director is running, it will listen to packets that announce
+				the so called <i>target</i>. The target is implemented in the
+				<a href="bundles/osgi-target.jar">target bundle</a>. This
+				bundle can also be found in the releases bundle directory. The director,
+				when running will also register the target bundle with the
+				HttpService under the name http://localhost:8080/test/director/www/osgi-target.jar
+				(where you must fill in localhost and 8080 for what is appropriate
+				for your environment). Please note that the director and the target
+				use a properietary protocol that must be of the same version.<br>
+				The target <i>must</i> run on the framework under test. It is quite small, has no UI (except System.out)
+				and is fully under control of the director. Care is taken to use only
+				a minimal execution environment. Once it is started it will broadcast
+				packets on port 2001. The broadcast can be limited to a single network,
+				see <a href="#target">target options</a>for more information.</br>
+			Once the director discovers one or more targets, it will add
+			them to the menu on the UI. The user can then select the target that
+			is targeted for a test run. (It is also possible to add targets <a href="#manually">manually</a>.<br>
+			Testcases are bundles that register a service object with the
+			<i>director</i> Framework under the name org.osgi.test.service.TestCase. A testcase
+			bundle contains a BundleActivator object that should register
+			the TestCase service. However, when the test case is actually run,
+			it must download a bundle in the target. This bundle is usually
+			part of the testcase bundle and many testcases have actually
+			several bundles embedded. All testbundles of a release are bundled in a single bundle. This
+			bundle will install the testcase bundles. For example the <a href='bundles/osgi-test.jar'>testbundle</a>. This bundle is called osgi-test.jar.<br>
+			All testcases work according to the same principle. The download a bundle
+			to the target and log all information coming from it. This log information
+			is compared to a reference log that is also in the testcase bundle. Any
+			deviations from the reference log is considered an error.<br>
+			The director will pick up these testcases and list them on the UI. The user can then
+			select a testcase and start it. Multiple testcases are selected by dragging
+			the cursor over multiple testcases. If no testcases are selected and start
+			is pressed, all testcases are run.<br>
+			Each testcase is downloaded in the target one by one. Between testcases,
+			the target removes all bundles that were installed and removes the
+			locations of bundles for any permission. (Bundles that have "~keep~"
+			in their name are kept, and thus not removed). This makes every test case run on
+			its own (This is different from the previous version). Errors during the
+			test case are reported to the message window. If everyting works, the
+			testcase that is running gets a green icon (indicating it has PASSED) and
+			the message window will show PASSED. Errors are reported and handled as good
+			as possible.<br>
+			A complete test run of one or more testcases or scripts
+			will result in a Test Report. Test Reports can be accessed via the httpservice running in the <i>director</i>
+			framework. Once a test run is completed, the URL to the result is listed
+			in the message window and can be copied with selecting it and pressing CONTROL+C (Copy). All test reports that have been run are listed
+			on http://localhost:8080/test/director.<br>
+			The test reports are listed in XML form and HTML form. The HTML
+			form is much more readable and the XML form can be used for post
+			processing of the results. The HTML is processed from the XML
+			form with XSLT. The stylesheet is available under http://localhost:8080/test/director/www/testresult.xsl.<br>
+			<h2>Sample session</h2>
+			The following example is zipped in <a href="test-framework.zip">test-framework.zip</a>
+			which is build from the latest sources every hour.</br>
+		<a name="sample"></a>The following direction assume you have "java" in your PATH variable. I.e., when you
+		type "java", it will execute the java VM.<br>
+		Two Frameworks need to be started, first one for the director which does not require
+		permissions. The second runs the target and requires permissions. We can run both
+		frameworks from the same directory if we modify the target frameworks working
+		directory.
+		<ol>
+			<li>Create a directory and cd into this. This is your "base" directory.</li>
+			<li>Create a jar directory and copy the following files into this directory:
+			<table>
+				<tr>
+					<td><a href="bundles/osgi-framework.jar">osgi-framework.jar</a></td>
+					<td>The reference impl. framework.</td>
+				</tr>
+				<tr>
+					<td><a href="bundles/osgi-support.jar">osgi-support.jar</a></td>
+					<td>A bundle that starts the log service, http service, and has some interfaces. This
+						is used by the osgi-director.jar because the osgi-refimpl.jar cannot run on 
+						2 frameworks on the same host due to port contention.</td>
+				</tr>
+				<tr>
+					<td><a href="bundles/osgi-refimpl.jar">osgi-refimpl.jar</a></td>
+					<td>Starts all the reference implementation bundles</td>
+				</tr>
+				<tr>
+					<td><a href="bundles/osgi-test.jar">osgi-test.jar</a></td>
+					<td>Is a group bundle that contains all the test cases</td>
+				</tr>
+				<tr>
+					<td><a href="bundles/osgi-director.jar">osgi-director.jar</a></td>
+					<td>Contains the director impelmentations.</td>
+				</tr>
+				<tr>
+					<td><a href="bundles/osgi-target.jar">osgi-target.jar</a></td>
+					<td>A bundle that can be controlled from the director</td>
+				</tr>
+			</table>
+			</li>
+			<li>Just try to start the framework. This is achieved with:
+			<pre>
+  java -jar jar/osgi-framework.jar
+					</pre>
+			This should start, and exit, the framework. The framework exits immediately because
+			there is no bundle to run. You should see a message like:
+			<pre>
+  $ java -jar jar/osgi-framework.jar
+  OSGi Framework, specification version 1.1
+  This is a reference implementation of the OSGi Framework.
+  It is written to be correct and easy to understand and is
+  intended only to be used for test and reference purposes.
+  Copyright (c) 1999 - 2001 Gatespace AB. All Rights Reserved.
+  Framework launched
+  $
+					</pre>
+			</li>
+			<li>
+			First start the director framework. Create a subdirectory
+			called director and "cd" into it. 
+			<pre>
+java \
+	-Dorg.osgi.service.http.port=8081 \
+	-Dorg.osgi.service.http.host=localhost \
+	-jar ../jar/osgi-framework.jar \
+	-init \
+	-launch \
+	-istart ../jar/osgi-support.jar \
+	-istart ../jar/osgi-director.jar \
+	-istart ../jar/osgi-test.jar 
+</pre>		
+			Place the contents of this example in a file (remove the \ and make
+			it into one line for windows) (or use the director.bat in in the
+			test-framework.zip file). For windows/dos place it in a director.bat and for Unix
+			place it in director.sh (dont forget to set the x bit).
+			<li>
+			Next we should start the target framework. This framework may actually run
+			on another machine, the UI will automatically detect targets in the
+			neighbourhood. Create a new target directory on the same level as the
+			director directory, and "cd" into it.
+			</li>
+			<li>
+			Certain test cases require the security to be setup correctly.
+			So the next thing is to create a policy file for the security. The policy file
+			is very simple, we just allow the framework AllPermission.
+			<pre>
+  grant codebase "file:jar/osgi-framework.jar" {
+	permission java.security.AllPermission;
+  };
+</pre>
+			Place this content in a file called 'policy'.
+			</li>
+			<li>
+			We must set the options of the Java VM to execute in secure mode
+			and to set the options of the director. Options are set with the -D
+			command of the java VM. They should come before the -jar. The following
+			is a small command file that can be placed in a bat or shell file
+			depending on your OS. The \ indicates that the line continues.
+			<pre>
+ java -Dorg.osgi.test.seewait=true \
+	-Djava.security.manager \
+	-Djava.security.policy=policy \
+	-Dorg.osgi.service.http.port=8080 
+	-jar ../jar/osgi-framework.jar \
+		-init  \
+		-launch \
+		-istart ../jar/osgi-refimpl.jar \
+		-istart ../jar/osgi-target.jar 
+</pre>
+			Place the contents of this example in a file (remove the \ and make
+			it into one line for windows). For windows/dos place it in a target.bat and for Unix
+			place it in target.sh (dont forget to set the x bit).
+			</li>
+			<li>Run the target and director by executing the shell script.</li>
+		</ol>
+		All the files are <a href='test-framework.zip'>zipped</a>.
+		<h2>The Director UI</h2>
+		<a name="director">The UI is written with IFC. This is a different UI than Windows
+			or Swing but should be quite straightforward for most computer
+			users.
+			<h3>Selecting a target</h3>
+			Goto the menu on the top of the page. The menu shows all the active
+			targets that are available on your network. Select the one needed. The
+			UI will remember your choice, even when targets go away or come.<br>
+			Sometimes a network contains multiple targets and you are only interested
+			in the local target. In that case, there is a checkbox "local only"
+			that will help. It will remove all targets from other computers
+			than your local computer.
+			<a name="manually"></a><h3>Selecting a "challenged" target</h3>
+			Some OSGi environments are not capable of broadcasting the
+			announcement messages or they are on another network where
+			broadcasts messages are not forwarded. There solutions to
+			this. First, on the top right site there is a text field. Typing
+			the name of the host (or IP number) and hitting enter/return will create a target to that host.
+			The other solution is to set the broadcast address of the target
+			to a single address of your host computer. This is done by setting
+			the system property: "org.osgi.test.broadcast" to the destination
+			system (or network).
+			<h3>Selecting test cases</h3>
+			Select the testcases you want to execute. No selected testcases
+			is the same as selecting all. Multiple testcases can be selected
+			with selecting the first and then keep the mouse pressed and dragging
+			it to include more. Unfortunately, the standard select + shift/control
+			does not work.
+			<h3>Starting a test run</h3>
+			A test run is started with pressing the start key. The key
+			will become red to indicate a run is in progress. The UI, however,
+			remains active and responds to other presses. You can still scroll
+			through the testcases and messages. Pressing the same button again (now
+			called stop) will attempt to stop the run. This can cause many
+			exceptions on the target because it requires the cooperation of the
+			test case itself. It is therefore also not always direct.
+			<h3>Debugging a test run</h3>
+			There are two support options for debugging a testcase. First option
+			is to select the debug checkbox. This will log more information. The
+			second option is to select the single step checkbox. Every time the
+			test case sends log information, the start/stop button will change
+			and the progress halts. This allows you to inspect the target framework
+			and look at the bundles state. Time outs might step in if the
+			session takes too long. In that case, use the disable timeouts
+			checkbox option.
+			<h3>How to see the log</h3>
+			All information that is logged from the target is compared to a
+			reference log. Due to the size of the information it is not useful
+			to see it when everything is passing. However, during debugging it
+			is useful to see this information. First, it is always displayed
+			on the console of the target framework. Second, checking the '
+			'See all logs' checkbox will show the result in the message window.
+			<h3>Progress</h3>
+			Some test cases can take a lot of time to execute. Well written test cases
+			should indicate progress (they can do this with the TestRun object
+			they receive) by sending the percentage of work done. Alas, not
+			all test cases are well written. Therefore, the UI will show the progress
+			but also a '.' for each received log entry.
+			<h3>Managing the director framework</h3>
+			The director framework can be managed when the 'manage' button
+			is pressed. A small window opens that shows the state of all bundles
+			in the framework (this is the director, <b>not</b> the target!).
+			There are buttons to start/stop/update/uninstall and install bundles. This
+			can be very useful sometimes. For example, it allows one to install the
+			test bundles.
+			<h3>Running a script</h3>
+			<a href="#script">Scripts</a> are XML files. A
+			script can be selected from the UI with the 'script' button. You
+			are asked to open a file. A reference to this file is placed in the
+			Framework's registry as if it was a normal testcase. This allows scripts
+			to be executed as normal testcases.<br>
+			Scripts cannot be removed.
+			<h3>Saving the messages content</h3>
+			The message window can be saved with the 'save text' button, or it can
+			be copied to the clipboard. Copying is achieved by selecting the text in the
+			message window and typing ^C (Control key + C key at the same time).
+			<h3>Seeing the test result</h3>
+			After a test run, the message window and the status line
+			will show where the results can be found (note: I tried to include
+			Swing's JEditorPane but I ran into too many shortcomings and strange
+			behaviors). The easiest way to direct your browser is to copy the
+			URL (^C) and paste it in the appropriate place of your favorite
+			browser.
+			<h2>Running a script at startup</h2>
+			<a name="background"></a>Director is prepared to run scripts in background without a UI. It
+			uses a number of properties to control the test run.
+			<table>
+				<tr>
+					<th>Property</th>
+					<th>Default</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td>org.osgi.test.batch.target</td>
+					<td>localhost:3191</td>
+					<td>This the host and port of the target where a script
+						will be executed on.</td>
+				</tr>
+				<tr>
+					<td>org.osgi.test.batch.script</td>
+					<td></td>
+					<td>A URL (mandatory, no filename alone) of a script. The script should
+						contain an <a href="#script">XML script</a>.</td>
+				</tr>
+				<tr>
+					<td>org.osgi.test.batch.out</td>
+					<td>&lt;date &amp; time &gt;.xml</td>
+					<td>A URL or a file name (if the name does not have ':' between
+						the 3 and 10th character it is assumed to be a file name) of a script.
+						The URL is used in the output mode. There exist many URL that work
+						that way:
+						<ol>
+							<dt>mailto:cpeg@mail.osgi.org?subject=Test+Result - Will send a mail, on some systems this requires the Java mail.host System property to be set!
+							<dt>ftp://cpeg:password@membercvs.osgi.org/testresult.xml - Will only work on systems that implement output on the FTP stream handler
+							<dt>http://membercvs.osgi.org/servlet/testresult.xml - Will do a POST on the given server
+							<dt>result.xml - Assume normal file name
+							<dt>result.html - URLs or filenames ending in HTML are stored as HTML and not the default XML<
+							</ol>
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.batch.ui</td>
+							<td>script ? false : true</td>
+							<td>Defines if there is a UI. If the property is set to 'false', the
+								UI is not started. The default tries to be intelligent. If a script is
+								run, there will be no UI. Without a script there is a UI. The UI
+								follows the script run if it is open and can be used for debugging.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.batch.quittarget</td>
+							<td>'false'</td>
+							<td>This property defines if the target should be exited
+								at the end of the script test run.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.compliance.applicant</td>
+							<td></td>
+							<td>This property can identify the applicant for the
+								compliance program. This is expected to become an identification
+								number but is not yet defined.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.compliance.program</td>
+							<td></td>
+							<td>Specifies the compliance program this
+								test run was done for. Needs to be specified further
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.compliance.campaign</td>
+							<td></td>
+							<td>The campaign id for the compliance program. Needs to be
+								further specified.</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.target.port</td>
+							<td>3191</td>
+							<td>This property is intended for the target framework. Normally, the target
+								framework listens at 3191 and this property can change that. The target
+								informs the director of this port through a broadcast message so no
+								property is necessary for the director.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.broadcast</td>
+							<td>255.255.255.255</td>
+							<td>The target uses this property to broadcast the announcement
+								package. The default works fine and works for most systems. It should
+								be used when the broadcast should be limited to one network, or it is
+								limited to a single host. For a host the actual IP can be used, for
+								a network, network broadcast address should be used which is for example
+								172.16.255.255. On some systems the broadcast address is 0.0.0.0 so
+								then this property can also be used.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.seewait</td>
+							<td>false</td>
+							<td>Testing is not easy and writing test cases is harder. This
+								property sets a simple animation when the target is waiting for input,
+								indicating that it is ready to listen to the director. There are
+								two animations:<br>
+								|/-\ for normal operation<br>
+								?!?! when there is an exception (usually security) during the sending of the announcement.
+							</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.testcase.timeout</td>
+							<td>60000</td>
+							<td>Timeout used for communication between director and
+								target for testcase communication when the testcase is based
+								on the classes in org.osgi.test.cases.util</td>
+						</tr>
+						<tr>
+							<td>org.osgi.test.testcase.watchdog</td>
+							<td>10</td>
+							<td>If this property is set, the target will exit after
+								30s * this value seconds. Deault, after 5 minutes the
+								watchdog will exit. This is intended to be used when the test is
+								run in a batch file every couple of hours and there are test cases that make
+								the target hang.</td>
+						</tr>
+					</table>
+					<h2>The Script language</h2>
+					<a name="script"></a>The director implements a simple script language for controlling the
+					test cases. The language is an XML DTD. Though it is not a script language
+					that will have many afficianados, it makes it very easy to parse. A script
+					can look like the following example:
+					<pre>
+&lt;script name="compliance" version="1.0"&gt;
+	&lt;delay duration="10" type="sec"/&gt;
+	&lt;istart&gt;
+		&lt;url&gt;http://membercvs.osgi.org/docs/compliance/bundles/org.osgi.test.cases.useradmin.tc1&lt;/url&gt;
+		&lt;url&gt;http://membercvs.osgi.org/docs/compliance/bundles/org.osgi.test.cases.useradmin.tc2&lt;/url&gt;
+		&lt;url&gt;http://membercvs.osgi.org/docs/compliance/bundles/org.osgi.test.cases.useradmin.tc3&lt;/url&gt;
+	&lt;/istart&gt;
+	&lt;testcase&gt;useradmin.tc2&lt;/testcase&gt;
+	&lt;waitfor max="10000" count="1" poll="500"&gt;(&amp;(objectclass=org.osgi.test.TestCase)(name=permissions.tc))&lt;/waitfor&gt;
+	&lt;updateFramework/&gt;
+	&lt;reboot status="0"/&gt;
+&lt;/script&gt;
+
+			</pre>
+					In detail:
+					<table>
+						<tr>
+							<th>Construct</th>
+							<th>Attributes</th>
+							<th>Description</th>
+						</tr>
+						<tr>
+							<td>&lt;script&gt;</td>
+							<td></td>
+							<td>This is the outer marker of the script.</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>name</td>
+							<td>Identifying name of the script</td>
+						</tr>
+						<tr>
+							<td>&lt;waitfor&gt;</td>
+							<td></td>
+							<td>Wait for a number of services to appear in the service
+								registry for a maximum time. The value of the tag is a filter
+								expression for the Framework.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>max='10000'</td>
+							<td>Maximum time to wait in ms</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>count='1'</td>
+							<td>Number of services that should come out of getServiceReferences with the
+								associated filter.</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>poll='500'</td>
+							<td>Number o ms between checks of the registry.</td>
+						</tr>
+						<tr>
+							<td>&lt;delay&gt;</td>
+							<td></td>
+							<td>Wait for a number of seconds.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>duration='10'</td>
+							<td>Time to wait, unit depends on type.</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>type='sec'</td>
+							<td>Unit, can be week, hour, day, minute, sec, ms</td>
+						</tr>
+						<tr>
+							<td>&lt;istart&gt;</td>
+							<td></td>
+							<td>Install and start a bundle from a url.
+							</td>
+						</tr>
+						<tr>
+							<td>&nbsp;&nbsp;&lt;url&gt;</td>
+							<td></td>
+							<td>URL for a bundle to be started.
+							</td>
+						</tr>
+						<tr>
+							<td>&lt;testcase&gt;</td>
+							<td></td>
+							<td>Run a testcase. The body of the tag is trimmed
+								of spaces and looked up in the registry. If such a
+								test case exists, it is executed in a new session.
+							</td>
+						</tr>
+						<tr>
+							<td>&lt;updateFramework&gt;</td>
+							<td></td>
+							<td>This function will update the framework on the
+								target. It will call Bundle.update() on the bundle
+								with ID=0. This will of course terminate the session,
+								but if a delay is inserted, the next line of the
+								script could run on the same target after it is
+								restarted.
+							</td>
+						</tr>
+						<tr>
+							<td>&lt;reboot&gt;</td>
+							<td></td>
+							<td>This function will exit the framework on the
+								target. It will call Bundle.stop() on the bundle
+								with ID=0. This will of course terminate the session. However,
+								if the target framework is restarted with a script
+								that starts it again, a small delay can be used to
+								continue the test run. Note that the exit status can be
+								used by the script on the target machine
+								to stop the framework or restart.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>status='0'</td>
+							<td>Set the exit status of the target framework.</td>
+						</tr>
+					</table>
+					
+					<h2>The Command Line</h2>
+					<a name="cmdline"></a>The director supports the nursery CommandProvider interface. It will
+					register a CommandProvider with the Framework when it starts. The
+					<a href='bundles/osgi-console.jar'>osgi-console.jar</a>
+					bundle can be run on the director Framework at the same time. This
+					console will listen on port 2011 (or a next port if it is busy) for
+					a telnet session. The director adds the following commands to the console:
+					<table>
+						<tr>
+							<th>Command</th>
+							<th>Options</th>
+							<th>Description</th>
+						</tr>
+						<tr>
+							<td>startrun</td>
+							<td></td>
+							<td>Starts a test run. This command must precede any testcase or exec commands.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>-host localhost</td>
+							<td>Defines the host where the target runs
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>-port 3191</td>
+							<td>The port where the target runs.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>-forever</td>
+							<td>Will not time out on messages.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>-debugging</td>
+							<td>Generate extra debugging information
+							</td>
+						</tr>
+						<tr>
+							<td>exec</td>
+							<td>&lt;script name&gt;</td>
+							<td>Execute a script. This can only be done after a startrun is given.
+							</td>
+						</tr>
+						<tr>
+							<td>exec</td>
+							<td>&lt;script name&gt;</td>
+							<td>Execute a script. This can only be done after a startrun is given.
+							</td>
+						</tr>
+						<tr>
+							<td></td>
+							<td>-output &lt;file name&gt;</td>
+							<td>Places the output in a file.
+							</td>
+						</tr>
+						<tr>
+							<td>testcase</td>
+							<td>&lt;testcase name&gt;</td>
+							<td>This will lookup the test case with the given name and
+								executes it in a new session.
+							</td>
+						</tr>
+						<tr>
+							<td>stoprun</td>
+							<td></td>
+							<td>Stop the current run and return the name of the result file.
+								This is an XML file stored in the history directory of the bundle.
+								It can also be found on the web on http://host:port/test/director
+							</td>
+						</tr>
+					</table>
+					<p><script language="javascript" type='text/javascript' >
+					finish()
+					</script>
+				</div>
+				
+			</body>
+		</html>
